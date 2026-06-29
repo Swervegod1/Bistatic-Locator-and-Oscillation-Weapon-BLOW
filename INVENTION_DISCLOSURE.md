@@ -2,7 +2,7 @@
 
 ## Source and Safety Note
 
-This disclosure is prepared from the repository materials available in this checkout and the part-number examples named in the task prompt. The referenced "conversation after the delimiter" was not present in the Slack message. Where the repository describes operational steps for causing aircraft loss of control or for directed acoustic neutralisation, this document intentionally keeps those portions at a non-operational patent-disclosure level and omits directly actionable drive parameters, weapon timing, field-strength settings, targeting commands, and defeat procedures.
+This disclosure is prepared from the repository materials available in this checkout, including Markdown setup notes, Python source files, the optimized bill of materials, the GNSS-SDR patch, repository screenshots, the hardware close-up images, the deployment drawings, and the PDF deck titled `Beautiful.ai - Architecting Next-Gen Passive Drone Interceptor Systems.pdf`. The referenced "conversation after the delimiter" was not present in the Slack message. Where the repository describes operational steps for causing aircraft loss of control or for directed acoustic neutralisation, this document intentionally keeps those portions at a non-operational patent-disclosure level and omits directly actionable drive parameters, weapon timing, field-strength settings, targeting commands, acoustic field-strength settings, and defeat procedures.
 
 ## 1. Title of the Invention
 
@@ -31,9 +31,9 @@ The acronym B.L.O.W. refers to "Bistatic Locator and Oscillation Weapon." In a s
 ## 5. Brief Description of the Drawings
 
 - **Figure 1** is a system-level block diagram of the passive multi-modal B.L.O.W. architecture.
-- **Figure 2** is a block diagram of a GNSS shadow and forward-scatter mapper.
-- **Figure 3** is a block diagram of a camera CMOS clock ELINT direction-finding station pair.
-- **Figure 4** is a block diagram of an ultrasonic passive ping TDOA array.
+- **Figure 2** is a block diagram of a GNSS shadow and forward-scatter mapper including ceramic patch antenna, SAW filter, GNSS front end, SDR, and C/N0 correlator.
+- **Figure 3** is a block diagram of a camera CMOS clock ELINT direction-finding station pair including crossed-dipole antennas, coherent receiver channels, MUSIC spectrum processing, and a phase interferometer.
+- **Figure 4** is a block diagram of an ultrasonic passive ping TDOA array including preamps, band-pass filters, ADCs, FPGA cross-correlation, and TDOA solver logic.
 - **Figure 5** is a sensor-fusion flow diagram showing UKF prediction, environmental compensation, and covariance intersection.
 - **Figure 6** is a shared-aperture receive/transmit acoustic architecture shown at a non-operational level.
 - **Figure 7** is a hardware implementation block diagram showing processing, FPGA, data buses, and power management.
@@ -47,9 +47,14 @@ The acronym B.L.O.W. refers to "Bistatic Locator and Oscillation Weapon." In a s
 
 The GNSS mapper uses passive reception of GNSS L1 signals as illuminators of opportunity. A drone or other air vehicle crossing the line of sight between satellites and one or more ground receiving stations can create a measurable shadow, attenuation dip, multipath perturbation, or forward-scatter signature. The repository describes a GNSS-SDR patch that publishes GNSS tracking telemetry, including satellite PRN, carrier-to-noise density, and early-late correlation information. The prompt additionally names **Taoglas GPDF1575.A** and **Mini-Circuits ZX60-P162LN+** as part numbers to include in the invention disclosure.
 
+The repository screenshots further describe the GNSS front end as a ceramic patch antenna feeding a surface-acoustic-wave (SAW) filter, low-noise amplification, a **MAX2769C** GNSS front-end LNA/mixer, and a **USRP B210** SDR. The illustrated GNSS channel uses GPS L1 at 1575.42 MHz. The display views show C/N0 signal-level plots with shadow dips and early-minus-late excursions over time.
+
 #### Representative Components
 
 - GNSS antenna: **Taoglas GPDF1575.A**.
+- Ceramic patch GNSS antenna element.
+- SAW filter between antenna and receiver front end.
+- GNSS receiver front end: **MAX2769C**.
 - GNSS low-noise amplifier option: **Mini-Circuits ZX60-P162LN+**.
 - Software-defined radio receiver: **USRP B210**.
 - GNSS software receiver: GNSS-SDR with a repository-provided shadow-detector patch.
@@ -64,6 +69,8 @@ The GNSS-SDR tracking loop is modified to publish per-PRN telemetry. The reposit
 - `early_late`: difference between early and late correlation values.
 - `station_id`: receiving-station identifier for multi-station processing.
 - `udp_host` and `udp_port`: telemetry destination parameters.
+
+In the screenshot-derived embodiment, the C/N0 and shadow correlator receives SDR data and outputs a filtered shadow-event trace. The correlator also watches early-minus-late behavior to distinguish ordinary gain variation from code-tracking distortion. A dashboard embodiment plots multiple station traces and highlights shadow minima with timestamp markers.
 
 ```text
                  GNSS satellites
@@ -119,11 +126,15 @@ def update_gnss_shadow_tracks(telemetry, baselines, event_store):
 
 In one embodiment, each GNSS satellite and receiver station defines a bistatic geometry. A measured perturbation is associated with a locus near the satellite-station path, refined by time, satellite ephemeris, multi-PRN consistency, and multi-station agreement. The mapper outputs a probabilistic bearing or volume measurement rather than a deterministic point when the geometry is underconstrained.
 
+The repository drawings show a representative field geometry with GNSS shadow mapper stations distributed over approximately 200 m station-to-station geometry and a local display volume of about 500 m by 200 m. Claimed non-destructive detection performance in the drawings includes sub-5 m circular error probable (CEP), approximately 10 Hz GNSS update rate, and RF-mode detection ranges extending to kilometer scale depending on geometry and environment. The PDF deck separately lists GNSS shadow detection at 3+ km as a comparative modality range.
+
 ### 6.2 Camera CMOS Clock ELINT Tracker
 
 #### Overview
 
 The ELINT tracker detects incidental emissions from drone camera electronics, including CMOS sensor clock leakage and harmonics. The repository describes crossed-dipole antenna stations feeding coherent receiver channels. The direction-finding subsystem estimates angle of arrival using phase differences and a MUSIC-style processing chain.
+
+The PDF deck states that camera sensors emit constant pixel-clock harmonics in the 24-72 MHz region and that such leakage can persist even when ordinary video transmission is disabled. The repository schematics additionally show a clock-harmonic search band from 48-144 MHz and a locked 96 MHz clock harmonic in the ELINT display. These values are treated as example harmonic search windows rather than a limitation of the invention.
 
 #### Representative Components
 
@@ -135,6 +146,10 @@ The ELINT tracker detects incidental emissions from drone camera electronics, in
 - Alternate LNA named in prompt: **Mini-Circuits ZX60-P162LN+**.
 - Bias-tee power for LNAs.
 - Example camera-clock harmonic named in repository setup notes: a 72 MHz harmonic observed during bench testing.
+- Example harmonic search band from repository schematic: 48-144 MHz.
+- Example locked harmonic shown in repository schematic: 96 MHz.
+- Example crossed-dipole element spacing: 1.5 m +/-0.05 m.
+- Example baseline between crossed-dipole DF stations: 180 m.
 
 ```text
       Drone camera module
@@ -159,6 +174,8 @@ The ELINT tracker detects incidental emissions from drone camera electronics, in
 #### Direction-Finding Algorithm
 
 Each ELINT station receives a coherent multi-channel I/Q snapshot. After calibration, the algorithm estimates the spatial covariance matrix, decomposes signal and noise subspaces, scans a steering-vector model, and reports a bearing with covariance.
+
+In the schematic-derived embodiment, the ELINT processing chain comprises ADC channels from a coherent receiver, a MUSIC spectrum stage that reports signal-source arrival angles over 0-360 degrees, and a phase-interferometer stage that converts calibrated phase differences into bearing vectors. The dashboard embodiment displays a "camera clock harmonic locked" indicator and multiple phase-pair traces, including phase 1-2, phase 3-4, phase 5-4, and related channel-pair diagnostics.
 
 ```python
 def music_direction_find(iq_snapshot, steering_vectors, phase_offsets):
@@ -187,11 +204,15 @@ def music_direction_find(iq_snapshot, steering_vectors, phase_offsets):
 
 The repository describes placing a signal generator with a small monopole at a known far-field location, injecting a 100 MHz tone, recording phase differences across four KerberosSDR channels, and storing the resulting phase-offset table for MUSIC processing. A health-monitor daemon checks phase coherence every 30 seconds and restarts a KerberosSDR synchronization service if drift exceeds 5 degrees.
 
+The PDF deck lists CMOS clock detection range as 500 m to 1 km. The engineering blueprint screenshot lists a broader RF range embodiment of approximately 2.5 km, bearing accuracy under 1 degree, and an update rate of approximately 25 Hz. Actual range depends on antenna aperture, harmonic strength, terrain, spectrum occupancy, receiver noise figure, calibration stability, and lawful deployment constraints.
+
 ### 6.3 Ultrasonic Altimeter Ping Passive Sonar Array
 
 #### Overview
 
 The ultrasonic subsystem passively listens for drone altimeter or ranging pings and estimates target position using TDOA. The repository implementation uses a 4 x 4 array of ultrasonic receiving tiles and a serial data path from FPGA to host. TDOA lags are solved into a three-dimensional position by Gauss-Newton iteration and smoothed by a Kalman filter.
+
+The PDF deck describes consumer-drone ultrasonic sonar pings around 40 kHz and notes that such pings may be relatively high-amplitude at close range. The repository drawings show the passive sonar array labeled "40 kHz," a 4 x 4 MEMS microphone grid, waveform views for channels 1-16, and a TDOA cross-correlation peak plot for passive ping localization.
 
 #### Representative Components
 
@@ -201,6 +222,7 @@ The ultrasonic subsystem passively listens for drone altimeter or ranging pings 
 - Transmit/receive switch: **MAX14759ETA+**.
 - Charge amplifier op amp: **OPA145IDBVR**.
 - Band-pass filter op amp: **OPA2325IDGKR**.
+- Active band-pass filter device shown in schematic: **LTC1562-2**.
 - Analog-to-digital converter: **ADS127L11**.
 - FPGA board: **Arty A7-35T** using **Artix-7 XC7A35T**.
 - Environmental sensor for sound-speed correction: **Bosch BME280**.
@@ -261,6 +283,8 @@ def solve_position(x_initial, tdoas, mic_pos, sound_speed):
         x += delta
     return x
 ```
+
+The dashboard embodiment reports a fused position estimate with an uncertainty ellipsoid, for example a +/-5 m uncertainty display. The engineering blueprint screenshot lists ultrasonic detection performance under 100 m, positional accuracy under 0.5 m in favorable geometry, and an update rate around 50 Hz. The PDF deck lists ultrasonic ping range as 150 m to 250 m in a comparative table. These values are disclosed as alternative design targets because acoustic range varies with transducer output, target altitude-sensor behavior, wind, humidity, terrain, and urban noise.
 
 #### FPGA TDOA Processing
 
@@ -333,6 +357,8 @@ x = [position_x, position_y, position_z, velocity_x, velocity_y, velocity_z]
 
 The repository `fusion_ukf.py` uses FilterPy's `UnscentedKalmanFilter` and `MerweScaledSigmaPoints` with a constant-velocity state transition. It also reads a **Bosch BME280** over I2C to compensate acoustic measurement noise for temperature and humidity.
 
+The PDF deck frames the fusion workflow as a tiered passive tracker: ultrasonic arrays handle local-zone cueing, CMOS clock DF confirms drone type, GNSS shadow mapping provides absolute ECEF coordinates, and a resolution layer presents operator-controlled outcomes. The UI screenshot shows ECEF and local coordinates, speed in meters per second, heading in degrees, target identification, confidence, overall confidence, and visual covariance/uncertainty overlays.
+
 ```text
        GNSS shadow volume ----+
                               |
@@ -395,6 +421,22 @@ def covariance_intersection(x_a, P_a, x_b, P_b, lam=0.5):
     return x, P
 ```
 
+#### Operator Display and Confidence Metrics
+
+In a representative user-interface embodiment, the processor renders:
+
+- GNSS C/N0 traces with per-station shadow minima.
+- Early-minus-late excursion plots for GNSS code-tracking disturbance.
+- A three-dimensional ECEF/local map volume, for example 500 m by 200 m.
+- Target identification, such as a drone model label when confidence permits.
+- Velocity and heading, for example meters per second and degrees.
+- Overall confidence and modality-specific confidence.
+- CMOS harmonic lock, MUSIC spectrum peaks, and phase-pair trace diagnostics.
+- Ultrasonic channel waveforms for channels 1-16.
+- TDOA cross-correlation peaks and fused uncertainty ellipsoids.
+
+The system may require operator confirmation or an authorization key before any non-receive-only mode is enabled.
+
 ### 6.5 Ultrasonic MEMS Gyro Resonator Kill Mechanism
 
 #### Non-Operational Description
@@ -445,6 +487,9 @@ The disclosed implementation may include:
 - Flight-safety and regulatory compliance checks.
 - Logging and post-event audit trails.
 - A receive-only default state.
+- An "authorization required" user-interface state before any acoustic output mode.
+- Legal-disclaimer and safety-warning screens for acoustic-energy use.
+- Acoustic-energy settings limited to non-destructive characterization unless separate lawful authority and safety engineering are documented.
 
 ### 6.6 Additional Embodiments
 
@@ -458,12 +503,17 @@ In non-operational terms, possible additional embodiments may include:
 - A data-fusion-only variant that ingests third-party radar, optical, acoustic, or RF bearings.
 - A simulation-only variant for GNSS shadow, ELINT, and ultrasonic TDOA algorithm validation.
 - A safety-interlocked countermeasure interface that exposes only abstract authorization states and never stores actionable defeat parameters in field software.
+- A passive RF-awareness variant that displays 2.4 GHz and 5.8 GHz spectrum features for situational awareness without transmitting or jamming.
+- A tiered-tracking variant that begins with a conventional lawful base tracker, including a 24 GHz FMCW radar mentioned in the PDF deck as a next step, and then layers passive sensors for high-fidelity confirmation.
+- A ruggedized field-kit embodiment with GNSS patch antennas, crossed-dipole DF antennas, passive ultrasonic array, a signal-processing unit with status LEDs, and a single-board computer in a Raspberry-Pi-like form factor.
 
 ### 6.7 Hardware Implementation
 
 #### System Processing Hardware
 
 The repository materials describe a central processing station based on a **Jetson Orin** or x86 PC, connected to a **USRP B210** for GNSS reception, **KerberosSDR** for ELINT reception, and an **Arty A7-35T** FPGA board over USB-UART and Ethernet. The FPGA target is **Artix-7 XC7A35T**.
+
+The repository hardware image also depicts a signal-processing unit with blue status LEDs, a single-board computer in an RPi form factor, a spectrum-analyzer display for passive awareness, GNSS patch hardware, LNA hardware, crossed-dipole antenna hardware, and a 4 x 4 MEMS ultrasonic array labeled at 40 kHz.
 
 ```text
  +--------------------+       +------------------+
@@ -497,11 +547,14 @@ The optimized bill of materials in the repository names the following parts:
 | --- | --- | ---: | --- |
 | MEMS microphone | **Vesper VM3011** | 16 | Replace SPU0410; recovers from acoustic overload |
 | Original/upgrade note | **Knowles SPU0410LR5H-2 -> Vesper VM3011 upgrade** | 16 | Prompt-specified upgrade wording |
+| Schematic microphone label | **SPU0410LRSH-2** | 16 | Screenshot label; treated as source spelling variant |
 | Transducer | **Murata MA40S4S** | 16 | No change |
 | T/R switch | **MAX14759ETA+** | 16 | No change |
 | Charge amplifier OPA | **OPA145IDBVR** | 16 | No change |
 | BPF op amp | **OPA2325IDGKR** | 16 | No change |
+| Active filter | **LTC1562-2** | channel-dependent | Screenshot band-pass filter |
 | TX FET | **EPC2032 (GaN)** | 16 | Replaces DRV8870 in optimized BOM |
+| Earlier driver reference | **DRV8870** | 16 | Replaced by optimized GaN driver path |
 | Gate driver | **LMG1210** | 16 | GaN-specific half-bridge driver |
 | ADC | **ADS127L11** | 2 | No change |
 | FPGA board | **Arty A7-35T** | 1 | No change |
@@ -515,12 +568,16 @@ The optimized bill of materials in the repository names the following parts:
 | GNSS/ELINT LNA option | **Mini-Circuits ZX60-P162LN+** | station-dependent | Prompt-specified part |
 | GNSS SDR | **USRP B210** | station-dependent | Repository setup note |
 | ELINT SDR | **KerberosSDR** | station-dependent | Repository setup note |
+| GNSS front end | **MAX2769C** | station-dependent | Screenshot GNSS front-end LNA/mixer |
 | GNSS lab simulator | **HackRF One** | 1 | Repository simulation note |
 | Programmable attenuator | **HMC624** | 1 | Repository simulation note |
+| Optional base tracker | **24 GHz FMCW radar** | embodiment-dependent | PDF deck next-step note |
 
 #### PCB and Interconnect
 
 The repository describes 25 mm x 25 mm four-layer ultrasonic tile boards fabricated from a KiCad design named `ultrasonic_tile.kicad_pcb`. It also describes custom FR4 dipole PCBs tuned around 100 MHz for the ELINT array. The acoustic tiles connect to the FPGA through a 40-pin ribbon-cable bus with shared power, shared SPI, per-tile chip-select lines, and control lines. Field-driving details for active acoustic output are not included here.
+
+The blueprint screenshots disclose representative physical deployment tolerances rather than PCB tolerances: crossed-dipole antenna element spacing of 1.5 m +/-0.05 m, general field-placement tolerance of +/-1.0 m unless otherwise specified, and a 200 m-scale station geometry. These are treated as deployment embodiments rather than mandatory dimensions.
 
 Representative receive-side interconnect from the repository:
 
@@ -570,6 +627,17 @@ The **Bosch BME280** is connected over I2C. The fusion node samples temperature 
 
 The repository `health_monitor_daemon.py` describes a process that checks KerberosSDR phase coherence every 30 seconds and restarts `kerberos_sync` if drift exceeds 5 degrees. The daemon also contemplates a test-signal injection path for channel-coherence verification.
 
+#### Dashboard Verification
+
+After calibration, the operator dashboard may be used to verify that:
+
+- GNSS shadow dips and early-minus-late excursions appear in expected station traces.
+- CMOS harmonic tracking indicates lock within the expected harmonic search band.
+- Phase-pair traces remain coherent after calibration.
+- Ultrasonic waveform channels exhibit time-aligned passive ping responses.
+- TDOA cross-correlation peaks are stable and produce a plausible 3D localization vector.
+- Fused target confidence and uncertainty ellipsoid size are consistent with the selected operating mode.
+
 #### Deployment Sequence
 
 The source repository describes a deployment sequence in which GNSS shadow detection, CMOS ELINT tracking, ultrasonic TDOA listening, fusion, and health monitoring are launched in order. A safe receive-only deployment sequence is:
@@ -590,49 +658,54 @@ The source repository describes a deployment sequence in which GNSS shadow detec
 
 3. The apparatus of claim 2, wherein multiple GNSS receiving stations correlate GNSS shadow or forward-scatter events across station identifiers and satellite PRNs to produce a probabilistic target measurement.
 
-4. The apparatus of claim 1, wherein the GNSS receiver includes a Taoglas GPDF1575.A antenna, a Mini-Circuits ZX60-P162LN+ low-noise amplifier, or a USRP B210 software-defined radio receiver.
+4. The apparatus of claim 1, wherein the GNSS receiver includes a Taoglas GPDF1575.A antenna, a ceramic patch antenna, a surface-acoustic-wave filter, a MAX2769C GNSS front end, a Mini-Circuits ZX60-P162LN+ low-noise amplifier, or a USRP B210 software-defined radio receiver.
 
 5. The apparatus of claim 1, wherein the ELINT receiver includes a crossed-dipole antenna array, a Mini-Circuits T1-1T-KK81+ balun, a Mini-Circuits PSA4-5043+ low-noise amplifier, and a KerberosSDR coherent receiver.
 
 6. The apparatus of claim 1, wherein the ELINT receiver is configured to estimate direction of arrival of a CMOS camera clock emission or harmonic by forming a spatial covariance matrix, decomposing signal and noise subspaces, and evaluating a MUSIC direction-finding spectrum.
 
-7. The apparatus of claim 1, wherein the ultrasonic receiver array comprises sixteen acoustic tile positions arranged as a four-by-four array.
+7. The apparatus of claim 6, wherein the CMOS camera clock emission or harmonic is searched in at least one of a 24-72 MHz, 48-144 MHz, 72 MHz, or 96 MHz harmonic embodiment.
 
-8. The apparatus of claim 7, wherein each acoustic tile includes a Vesper VM3011 MEMS microphone, a Murata MA40S4S ultrasonic transducer, a MAX14759ETA+ transmit/receive switch, an OPA145IDBVR charge amplifier, an OPA2325IDGKR band-pass filter amplifier, or an ADS127L11 analog-to-digital converter.
+8. The apparatus of claim 1, wherein the ultrasonic receiver array comprises sixteen acoustic tile positions arranged as a four-by-four array.
 
-9. The apparatus of claim 7, wherein the sixteen acoustic tile positions are arranged with nominal 4.25 mm spacing and are connected to an Artix-7 XC7A35T FPGA.
+9. The apparatus of claim 8, wherein each acoustic tile includes a Vesper VM3011 MEMS microphone, a Murata MA40S4S ultrasonic transducer, a MAX14759ETA+ transmit/receive switch, an OPA145IDBVR charge amplifier, an OPA2325IDGKR band-pass filter amplifier, an LTC1562-2 active filter, or an ADS127L11 analog-to-digital converter.
 
-10. The apparatus of claim 1, wherein an FPGA TDOA core detects an ultrasonic pulse, captures multi-channel samples, computes lags relative to a reference channel, and reports said lags to a host tracker.
+10. The apparatus of claim 8, wherein the sixteen acoustic tile positions are arranged with nominal 4.25 mm spacing and are connected to an Artix-7 XC7A35T FPGA.
 
-11. The apparatus of claim 10, wherein the host tracker computes a three-dimensional target estimate by Gauss-Newton iteration over TDOA residuals.
+11. The apparatus of claim 1, wherein an FPGA TDOA core detects an ultrasonic pulse, captures multi-channel samples, computes lags relative to a reference channel, and reports said lags to a host tracker.
 
-12. The apparatus of claim 1, wherein the fusion processor implements an Unscented Kalman Filter using a six-dimensional state comprising three position components and three velocity components.
+12. The apparatus of claim 11, wherein the host tracker computes a three-dimensional target estimate by Gauss-Newton iteration over TDOA residuals.
 
-13. The apparatus of claim 12, wherein the fusion processor adjusts ultrasonic measurement covariance according to a speed of sound estimated from temperature and humidity measured by a Bosch BME280 sensor.
+13. The apparatus of claim 1, wherein the fusion processor implements an Unscented Kalman Filter using a six-dimensional state comprising three position components and three velocity components.
 
-14. The apparatus of claim 12, wherein the fusion processor performs covariance intersection with a tunable lambda parameter when fusing tracks with unknown cross-correlation.
+14. The apparatus of claim 13, wherein the fusion processor adjusts ultrasonic measurement covariance according to a speed of sound estimated from temperature and humidity measured by a Bosch BME280 sensor.
 
-15. The apparatus of claim 1, further comprising a health monitor configured to measure phase coherence of a coherent ELINT receiver and to restart a synchronization service when phase drift exceeds a threshold.
+15. The apparatus of claim 13, wherein the fusion processor performs covariance intersection with a tunable lambda parameter when fusing tracks with unknown cross-correlation.
 
-16. The apparatus of claim 1, further comprising a shared acoustic aperture configurable between a passive receive state and a controlled acoustic output state subject to authorization, geofence, timeout, thermal, and exposure-limit interlocks.
+16. The apparatus of claim 1, further comprising a health monitor configured to measure phase coherence of a coherent ELINT receiver and to restart a synchronization service when phase drift exceeds a threshold.
 
-17. The apparatus of claim 16, wherein the controlled acoustic output state is configured for laboratory MEMS inertial sensor susceptibility characterization or other lawful non-destructive testing.
+17. The apparatus of claim 1, further comprising a shared acoustic aperture configurable between a passive receive state and a controlled acoustic output state subject to authorization, geofence, timeout, thermal, and exposure-limit interlocks.
 
-18. A method of passive drone detection comprising receiving GNSS telemetry, ELINT I/Q samples, and ultrasonic TDOA lags; estimating GNSS shadow events, camera clock bearings, and ultrasonic positions; compensating acoustic measurements for environmental conditions; and fusing said estimates into a target track.
+18. The apparatus of claim 17, wherein the controlled acoustic output state is configured for laboratory MEMS inertial sensor susceptibility characterization or other lawful non-destructive testing.
 
-19. The method of claim 18, further comprising calibrating GNSS station positions using static PPP, calibrating ultrasonic channel offsets using a surveyed reference pinger, calibrating ELINT phase offsets using a known far-field tone, and storing calibration data for real-time processing.
+19. A method of passive drone detection comprising receiving GNSS telemetry, ELINT I/Q samples, and ultrasonic TDOA lags; estimating GNSS shadow events, camera clock bearings, and ultrasonic positions; compensating acoustic measurements for environmental conditions; and fusing said estimates into a target track.
 
-20. A non-transitory computer-readable medium storing instructions that, when executed by a processor or FPGA fabric, cause the system to publish GNSS shadow telemetry, compute ELINT direction-finding bearings, compute ultrasonic TDOA lags, perform UKF-based sensor fusion, and enforce safety interlocks for any shared-aperture acoustic output mode.
+20. The method of claim 19, further comprising calibrating GNSS station positions using static PPP, calibrating ultrasonic channel offsets using a surveyed reference pinger, calibrating ELINT phase offsets using a known far-field tone, and storing calibration data for real-time processing.
 
 ## 8. Abstract
 
-A passive multi-modal drone detection system combines GNSS shadow or forward-scatter sensing, CMOS camera clock ELINT direction finding, and ultrasonic altimeter ping TDOA localization. GNSS receivers publish carrier-to-noise and early-late correlation telemetry; coherent ELINT stations estimate bearing to incidental camera clock emissions; and a four-by-four ultrasonic array computes passive TDOA positions. A fusion processor implements an Unscented Kalman Filter, environmental sound-speed compensation using a Bosch BME280 sensor, and covariance intersection for uncertain cross-sensor correlation. A shared acoustic aperture is described as configurable for receive operation and safety-interlocked laboratory acoustic output. The system uses COTS components including USRP B210, KerberosSDR, Arty A7-35T, Vesper VM3011, Murata MA40S4S, ADS127L11, MAX14759ETA+, EPC2032 (GaN), LMG1210, Mini-Circuits PSA4-5043+, Mini-Circuits T1-1T-KK81+, Mini-Circuits ZX60-P162LN+, and Taoglas GPDF1575.A.
+A passive multi-modal drone detection system combines GNSS shadow or forward-scatter sensing, CMOS camera clock ELINT direction finding, and ultrasonic altimeter ping TDOA localization. GNSS receivers publish carrier-to-noise and early-late correlation telemetry; coherent ELINT stations estimate bearing to incidental camera clock emissions; and a four-by-four ultrasonic array computes passive TDOA positions. A fusion processor implements an Unscented Kalman Filter, environmental sound-speed compensation using a Bosch BME280 sensor, and covariance intersection for uncertain cross-sensor correlation. A shared acoustic aperture is described as configurable for receive operation and safety-interlocked laboratory acoustic output. The system uses COTS components including USRP B210, KerberosSDR, Arty A7-35T, MAX2769C, Vesper VM3011, Murata MA40S4S, ADS127L11, MAX14759ETA+, LTC1562-2, EPC2032 (GaN), LMG1210, Mini-Circuits PSA4-5043+, Mini-Circuits T1-1T-KK81+, Mini-Circuits ZX60-P162LN+, and Taoglas GPDF1575.A.
 
 ## 9. Optimisation Notes
 
 - **FPGA DSP mapping:** The repository names `tdoa_core_optimized.v` and `tdoa_correlator_optimized.v`, indicating that cross-correlation and lag extraction are intended to map efficiently onto FPGA DSP and BRAM resources.
+- **GNSS front-end filtering:** Ceramic patch antenna, SAW filtering, LNA gain, and **MAX2769C** front-end processing improve C/N0 stability before shadow-event extraction.
+- **C/N0 and early-minus-late pairing:** Combining C/N0 shadow dips with early-minus-late excursions improves rejection of ordinary gain changes and receiver artifacts.
+- **Harmonic-search diversity:** Searching example CMOS clock harmonic bands such as 24-72 MHz, 48-144 MHz, 72 MHz, and 96 MHz improves the chance of detecting different camera-clock architectures.
+- **MUSIC plus phase interferometry:** The repository schematics combine MUSIC spectrum peaks with phase-interferometer bearing vectors, providing redundant bearing estimates from coherent ELINT channels.
 - **Dual-port capture buffering:** The named `capture_buffer_dualport.v` module supports simultaneous sample capture and correlation access, reducing latency between ping detection and lag reporting.
 - **Sub-sample interpolation:** The source request calls out sub-sample interpolation as an optimization; in this architecture it improves TDOA resolution beyond raw sample-period granularity.
+- **LTC1562-2 acoustic filtering:** Dedicated active band-pass filtering before **ADS127L11** conversion improves ultrasonic ping signal-to-noise ratio and correlation peak stability.
 - **GaN driver substitution:** The optimized BOM replaces DRV8870 with **EPC2032 (GaN)** and **LMG1210**, improving switching speed and thermal behavior for controlled acoustic-output research while remaining subject to safety interlocks.
 - **MEMS microphone upgrade:** **Knowles SPU0410LR5H-2 -> Vesper VM3011 upgrade** improves recovery from high-SPL acoustic exposure and supports a shared receive/output aperture concept.
 - **PREEMPT_RT kernel:** The repository setup script installs a real-time kernel, isolates CPUs 2-3, configures IRQ affinity, and grants real-time scheduling limits, reducing SDR and FPGA host-thread jitter.
