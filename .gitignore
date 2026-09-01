@@ -17,6 +17,9 @@ Thumbs.db
 
 # Python
 __pycache__/
+.pytest_cache/
+.coverage
+coverage.xml
 *.py[cod]
 *$py.class
 *.so
@@ -58,3 +61,7 @@ devel/
 *.log
 *.pb
 *.xpr
+
+# Local-only review and data artifacts
+data/private/
+reports/

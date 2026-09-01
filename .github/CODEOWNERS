@@ -1,0 +1,8 @@
+# Maintainer review is required for sensitive project areas.
+* @Swervegod1
+/blow_observation/ @Swervegod1
+/tests/ @Swervegod1
+/.github/ @Swervegod1
+/SECURITY.md @Swervegod1
+/docs/DATA_GOVERNANCE.md @Swervegod1
+/docs/THREAT_MODEL.md @Swervegod1

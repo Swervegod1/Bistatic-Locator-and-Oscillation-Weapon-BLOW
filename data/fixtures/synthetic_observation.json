@@ -1,0 +1,16 @@
+{
+  "event_id": "fixture-0001",
+  "source_type": "synthetic",
+  "data_authorization": "approved_fixture",
+  "captured_at": "2026-09-01T00:00:00Z",
+  "retention_expires_at": "2026-09-08T00:00:00Z",
+  "observation_summary": "Synthetic record for testing the evidence-review workflow; it is not a field observation or performance result.",
+  "confidence": "limited",
+  "known_limitations": [
+    "Synthetic fixture; it cannot establish field performance.",
+    "No identity, location, trajectory, or intent data is included."
+  ],
+  "review_status": "draft",
+  "reviewer": null,
+  "has_actuation": false
+}
