@@ -9,6 +9,20 @@ It produces human-reviewable evidence cards from synthetic fixtures or records t
 > [!IMPORTANT]
 > B.L.O.W. Evidence Studio is not a countermeasure, drone-intervention, surveillance, or enforcement product. Do not connect it to live devices, vehicle controls, real-time feeds, or automated decisions. Do not make up performance, compliance, safety, or authority claims.
 
+![B.L.O.W. Evidence Studio evidence-governance overview](assets/evidence-governance-overview.svg)
+
+## Public-sector evaluation and procurement
+
+B.L.O.W. Evidence Studio is designed for public-sector evaluation teams, research programs, safety offices, and acquisition stakeholders that need to examine an AI evidence workflow without approving a live surveillance or intervention system. It makes the questions that matter during a responsible acquisition review visible from the start: **What data is authorized? What can the software do? What is prohibited? Who reviews the result? How is it retained or removed?**
+
+- **Procurement-ready documentation:** a concrete data boundary, threat model, security policy, SOP, test suite, and source-backed claim rules.
+- **Evidence before inference:** each local record carries provenance, authorization, known limitations, reviewer identity, and a retention date.
+- **Zero-actuation by design:** the package rejects prohibited fields and has no network, hardware, device-control, location, identity, targeting, or intervention interfaces.
+- **Decision support, not automated authority:** release requires named human review; the software never makes a physical, enforcement, or operational decision.
+- **Truthful maturity signals:** the repository distinguishes what is implemented today from future work and makes no certification, authority, detection, performance, or compliance claim that it cannot substantiate.
+
+For the decision-ready overview, see the [procurement readiness brief](docs/PROCUREMENT_READINESS.md) and the [evidence-review SOP](docs/SOP_EVIDENCE_REVIEW.md).
+
 ## What this project does
 
 - Validates local, already-redacted evidence records.
@@ -112,6 +126,8 @@ Suggested GitHub topics: `ai-governance`, `responsible-ai`, `evidence-integrity`
 ## Governance and sources
 
 - [Safe rebuild brief](docs/SAFE_REBUILD_BRIEF.md)
+- [Procurement readiness brief](docs/PROCUREMENT_READINESS.md)
+- [Evidence review SOP](docs/SOP_EVIDENCE_REVIEW.md)
 - [Data governance](docs/DATA_GOVERNANCE.md)
 - [Security policy](SECURITY.md)
 - [Threat model](docs/THREAT_MODEL.md)
